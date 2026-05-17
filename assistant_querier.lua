@@ -70,19 +70,8 @@ function Querier:load_model(provider_name)
     if success then
         self.handler = handler
         self.handler_name = handler_name
-        -- Shallow copy to avoid mutating CONFIGURATION
-        self.provider_settings = {}
-        for k, v in pairs(provider_settings) do
-            self.provider_settings[k] = v
-        end
+        self.provider_settings = provider_settings
         self.provider_name = provider_name
-        -- Apply saved OpenRouter model override
-        if handler_name == "openrouter" then
-            local saved_model = self.settings:readSetting("openrouter_model_" .. provider_name)
-            if saved_model and saved_model ~= "" then
-                self.provider_settings.model = saved_model
-            end
-        end
         return true
     else
         local err = T(_("The handler for %1 was not found. Please ensure the handler exists in api_handlers directory."),
@@ -127,34 +116,11 @@ function Querier:showError(err)
     UIManager:show(dialog)
 
     -- clear the text selection when plugin is called without a highlight or dict dialog
-    if self.assistant.ui.highlight then
-        if not (self.assistant.ui.highlight.highlight_dialog or self.assistant.ui.dictionary.dict_window) then
-            self.assistant.ui.highlight:clear()
-        end
+    if not (self.assistant.ui.highlight.highlight_dialog or self.assistant.ui.dictionary.dict_window) then
+        self.assistant.ui.highlight:clear()
     end
 end
 
-
---- Create a bouncing period animation
--- Returns a table with animation frames and current frame index
-local function createWaitingAnimation()
-    local frames = { ".", " .", "  .", "   .", "  .", " ." }
-    local currentIndex = 1
-
-    return {
-        getNextFrame = function()
-            local frame = frames[currentIndex]
-            currentIndex = currentIndex + 1
-            if currentIndex > #frames then
-                currentIndex = 1
-            end
-            return frame
-        end,
-        reset = function()
-            currentIndex = 1
-        end
-    }
-end
 
 local function trimMessageHistory(message_history)
     local trimed_history = {}
@@ -174,11 +140,6 @@ function Querier:query(message_history, title)
     local use_stream_mode = self.settings:readSetting("use_stream_mode", true)
     koutil.tableSetValue(self.provider_settings, use_stream_mode, "additional_parameters", "stream")
 
-    -- Set up waiting animation for non-streaming mode
-    local animation = createWaitingAnimation()
-    local animation_task = nil
-    local response_received = false
-
     local infomsg = InfoMessage:new{
       icon = "book.opened",
       text = string.format("%s\n️☁️ %s\n⚡ %s", title or _("Querying AI ..."), self.provider_name,
@@ -186,44 +147,19 @@ function Querier:query(message_history, title)
     }
 
     UIManager:show(infomsg)
-
-    -- Start animation for non-streaming mode
-    local initial_text = infomsg.text
-    local function updateInfoMessage()
-        if not response_received then
-            infomsg.text = initial_text .. "\n" .. animation:getNextFrame()
-            UIManager:setDirty(infomsg)
-            animation_task = UIManager:scheduleIn(0.4, updateInfoMessage)
-        end
-    end
-    animation_task = UIManager:scheduleIn(0.4, updateInfoMessage)
-
     self.handler:setTrapWidget(infomsg)
     local res, err = self.handler:query(trimMessageHistory(message_history), self.provider_settings)
     self.handler:resetTrapWidget()
-
-    -- Stop animation
-    response_received = true
-    if animation_task then
-        UIManager:unschedule(animation_task)
-        animation_task = nil
-    end
-
     UIManager:close(infomsg)
 
     -- when res is a function, it means we are in streaming mode
     -- open a stream dialog and run the background query in a subprocess
     if type(res) == "function" then
         self.user_interrupted = false -- reset the stream interrupted flag
-        local streamDialog
-        local animation_task = nil -- Will be set during animation setup
+        local streamDialog 
 
         local function _closeStreamDialog()
             if self.interrupt_stream then self.interrupt_stream() end
-            if animation_task then
-                UIManager:unschedule(animation_task)
-                animation_task = nil
-            end
             UIManager:close(streamDialog)
         end
 
@@ -274,41 +210,15 @@ function Querier:query(message_history, title)
         streamDialog.title_bar:init()
         UIManager:show(streamDialog)
 
-        -- Set up waiting animation
-        local animation = createWaitingAnimation()
-        local first_content_received = false
-
-        -- Start animation
-        streamDialog._input_widget:setText(animation:getNextFrame(), true)
-        local function updateAnimation()
-            if not first_content_received then
-                streamDialog._input_widget:setText(animation:getNextFrame(), true)
-                animation_task = UIManager:scheduleIn(0.4, updateAnimation)
-            end
-        end
-        animation_task = UIManager:scheduleIn(0.4, updateAnimation)
-
         local stream_mode_auto_scroll = self.settings:readSetting("stream_mode_auto_scroll", true)
         local ok, content, err = pcall(self.processStream, self, res, function (content, buffer)
             UIManager:nextTick(function ()
-                -- Stop animation on first content
-                if not first_content_received and content and #tostring(content) > 0 then
-                    first_content_received = true
-                    if animation_task then
-                        UIManager:unschedule(animation_task)
-                        animation_task = nil
-                    end
-                    streamDialog._input_widget:setText("", true) -- Clear the animation
-                end
-
                 -- schedule the text update in the UIManager task queue
-                if first_content_received then
-                    if stream_mode_auto_scroll then
-                        streamDialog:addTextToInput(content or "")
-                    else
-                        streamDialog._input_widget:resyncPos()
-                        streamDialog._input_widget:setText(table.concat(buffer or {}), true)
-                    end
+                if stream_mode_auto_scroll then
+                    streamDialog:addTextToInput(content or "")
+                else
+                    streamDialog._input_widget:resyncPos()
+                    streamDialog._input_widget:setText(table.concat(buffer or {}), true)
                 end
             end)
         end)

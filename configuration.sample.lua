@@ -5,23 +5,10 @@ local CONFIGURATION = {
     provider = "openai",
 
     -- Provider-specific settings
-    --
-    -- NAMING PATTERN: Configuration keys follow the format {handler}_{description}
-    -- - The part BEFORE the first underscore determines which API handler is used
-    -- - The part AFTER the underscore is just a descriptive name (can be anything)
-    --
-    -- Examples:
-    --   openai_perplexity  → uses 'openai' handler for Perplexity API
-    --   openai_grok        → uses 'openai' handler for Grok API
-    --   anthropic_websearch → uses 'anthropic' handler with custom settings
-    --
-    -- This allows you to create multiple configurations using the same handler
-    -- with different models, endpoints, or parameters.
-    --
     provider_settings = {
         openai = {
-            default = true,        -- optional, if provider above is not set, will try to find one with `default =  true`
-            visible = true,        -- optional, if set to false, will not shown in the provider switch
+            defalut = true, -- optional, if provider above is not set, will try to find one with `defalut =  true`
+            visible = true, -- optional, if set to false, will not shown in the provider switch
             model = "gpt-4o-mini", -- model list: https://platform.openai.com/docs/models
             base_url = "https://api.openai.com/v1/chat/completions",
             api_key = "your-openai-api-key",
@@ -41,7 +28,7 @@ local CONFIGURATION = {
             }
         },
         anthropic = {
-            visible = true,                    -- optional, if set to false, will not shown in the profile switch
+            visible = true, -- optional, if set to false, will not shown in the profile switch
             model = "claude-3-5-haiku-latest", -- model list: https://docs.anthropic.com/en/docs/about-claude/models
             base_url = "https://api.anthropic.com/v1/messages",
             api_key = "your-anthropic-api-key",
@@ -50,41 +37,20 @@ local CONFIGURATION = {
                 max_tokens = 4096
             }
         },
-        -- Anthropic with web search
-        anthropic_websearch = {
-            visible = false,                   -- optional, if set to false, will not shown in the profile switch
-            model = "claude-3-5-haiku-latest", -- model list: https://docs.anthropic.com/en/docs/about-claude/models
-            base_url = "https://api.anthropic.com/v1/messages",
-            api_key = "your-anthropic-api-key",
-            additional_parameters = {
-                anthropic_version = "2023-06-01", -- api version list: https://docs.anthropic.com/en/api/versioning
-                max_tokens = 4096,
-                tools = {
-                    { -- enable web search
-                        type = "web_search_20250305",
-                        name = "web_search",
-                        max_uses = 5,
-                    },
-                }
-            }
-        },
         gemini = {
             model = "gemini-2.5-flash", -- model list: https://ai.google.dev/gemini-api/docs/models , ex: gemini-2.5-pro , gemini-2.5-flash
+            -- For Gemini API key auth:
             base_url = "https://generativelanguage.googleapis.com/v1beta/models/",
             api_key = "your-gemini-api-key",
+            -- For Vertex AI via API key (no project ID needed):
+            -- base_url = "https://aiplatform.googleapis.com/v1/publishers/google/models/",
+            -- api_key = "your-vertex-ai-api-key",
             additional_parameters = {
                 temperature = 0.7,
                 max_tokens = 1048576,
                 -- Set to 0 to disable thinking. Recommended for gemini-2.5-* and newer, where thinking is enabled by default.
                 thinking_budget = 0
             }
-        },
-        gigachat = {
-            model = "GigaChat-2",
-            base_url = "https://gigachat.devices.sberbank.ru/api/v1/chat/completions",
-            auth_url = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth",
-            api_key = "your-authorization-key",
-            additional_parameters = {}
         },
         openrouter = {
             model = "google/gemini-2.0-flash-exp:free", -- model list: https://openrouter.ai/models?order=top-weekly
@@ -115,93 +81,19 @@ local CONFIGURATION = {
             }
         },
         deepseek = {
-            visible = false,                   -- optional, if set to false, will not shown in the profile switch
-            model = "deepseek-v4-flash",
+            model = "deepseek-chat",
             base_url = "https://api.deepseek.com/v1/chat/completions",
             api_key = "your-deepseek-api-key",
-            additional_parameters = {
-                temperature = 0.7,
-                max_tokens = 4096,
-                -- Thinking mode configuration (optional)
-                -- For DeepSeek-v4, disable thinking mode for faster responses:
-                -- thinking = { type = "disabled" },
-                -- Or enable thinking mode with budget control:
-                -- thinking = { type = "enabled", budget_tokens = 2000 },
-            }
-        },
-        deepseek_fast = {
-            -- DeepSeek with thinking mode disabled for faster responses
-            model = "deepseek-v4-flash",
-            base_url = "https://api.deepseek.com/v1/chat/completions",
-            api_key = "your-deepseek-api-key",
-            additional_parameters = {
-                temperature = 0.7,
-                max_tokens = 4096,
-                thinking = { type = "disabled" }
-            }
-        },
-        gemma = {
-            -- Gemma models via Google's OpenAI-compatible API or other providers
-            -- Automatically detects API type and filters out <thought> tags from Gemma 4 models
-            -- (Gemma 2 models don't have this issue, but handler is safe for both)
-            
-            -- Option 1: Google's OpenAI-compatible API (Recommended for Gemma 4)
-            -- Note: Both endpoints work: /v1beta/openai/ or /v1beta/chat/completions
-            visible = false,                   -- optional, if set to false, will not shown in the profile switch
-            model = "gemma-4-31b-it",
-            base_url = "https://generativelanguage.googleapis.com/v1beta/openai/",   -- Alternative: base_url = "https://generativelanguage.googleapis.com/v1beta/chat/completions",
-            api_key = "your-gemini-api-key",
-            additional_parameters = {
-                temperature = 0.3,
-                max_tokens = 500  -- Use "max_tokens" for OpenAI-compatible format
-            }
-            
-            -- Option 2: Ollama or other OpenAI-compatible API (for Gemma 2)
-            -- model = "gemma-2-9b-it",
-            -- base_url = "http://localhost:11434/v1/chat/completions",
-            -- api_key = "gemma",
-            -- additional_parameters = {
-            --     temperature = 0.7,
-            --     max_tokens = 4096
-            -- }
-            
-            -- Option 3: Native Gemini API format (alternative)
-            -- model = "gemma-4-31b-it",
-            -- base_url = "https://generativelanguage.googleapis.com/v1beta/models/",
-            -- api_key = "your-gemini-api-key",
-            -- additional_parameters = {
-            --     temperature = 0.3,
-            --     maxOutputTokens = 500  -- Use "maxOutputTokens" for native Gemini format
-            -- }
-        },
-        openai_perplexity = {
-            visible = false,                   -- optional, if set to false, will not shown in the profile switch
-            -- Perplexity API is OpenAI-compatible, uses openai handler
-            -- Model list: https://docs.perplexity.ai/guides/model-cards
-            model = "sonar-pro",
-            base_url = "https://api.perplexity.ai/chat/completions",
-            api_key = "pplx-your-api-key",
             additional_parameters = {
                 temperature = 0.7,
                 max_tokens = 4096
             }
         },
-        openai_perplexity_reasoning = {
-            visible = false,                   -- optional, if set to false, will not shown in the profile switch
-            -- Perplexity reasoning models for complex tasks
-            model = "sonar-reasoning-pro",
-            base_url = "https://api.perplexity.ai/chat/completions",
-            api_key = "pplx-your-api-key",
-            additional_parameters = {
-                temperature = 0.7,
-                max_tokens = 8192
-            }
-        },
         ollama = {
-            model = "your-preferred-model",        -- model list: https://ollama.com/library
+            model = "your-preferred-model", -- model list: https://ollama.com/library
             base_url = "your-ollama-api-endpoint", -- ex: "https://ollama.example.com/api/chat"
             api_key = "ollama",
-            additional_parameters = {}
+            additional_parameters = { }
         },
         mistral = {
             model = "mistral-small-latest", -- model list: https://docs.mistral.ai/getting-started/models/models_overview/
@@ -220,7 +112,7 @@ local CONFIGURATION = {
                 temperature = 0.7,
                 -- config options, see: https://console.groq.com/docs/api-reference
                 -- eg: disable reasoning for model qwen3, set:
-                -- reasoning_effort = "none"
+                -- reasoning_effort = "none" 
             }
         },
         groq_qwen = {
@@ -236,80 +128,26 @@ local CONFIGURATION = {
         },
         azure_openai = {
             endpoint = "https://your-resource-name.openai.azure.com", -- Your Azure OpenAI resource endpoint
-            deployment_name = "your-deployment-name",                 -- Your model deployment name
-            api_version = "2024-02-15-preview",                       -- Azure OpenAI API version
-            api_key = "your-azure-api-key",                           -- Your Azure OpenAI API key
+            deployment_name = "your-deployment-name", -- Your model deployment name
+            api_version = "2024-02-15-preview", -- Azure OpenAI API version
+            api_key = "your-azure-api-key", -- Your Azure OpenAI API key
             temperature = 0.7,
             max_tokens = 4096
         },
     },
 
-    -- Optional features
+    -- Optional features 
     features = {
-        hide_highlighted_text = false,         -- Set to true to hide the highlighted text at the top
-        hide_long_highlights = true,           -- Hide highlighted text if longer than threshold
-        long_highlight_threshold = 500,        -- Number of characters considered "long"
+        hide_highlighted_text = false,  -- Set to true to hide the highlighted text at the top
+        hide_long_highlights = true,    -- Hide highlighted text if longer than threshold
+        long_highlight_threshold = 500,  -- Number of characters considered "long"
         -- system_prompt = "You are a helpful AI assistant. Always respond in Markdown format.", -- Custom system prompt for the AI ("Ask" button) to override the default, to disable set to nil
-        render_markdown = true,                -- Set to true to render markdown in the AI responses
-        updater_disabled = false,              -- Set to true to disable update check.
-        default_folder_for_logs = nil,         -- Set the default folder for auto saved logs, nil for the same folder as the book, ex: "/mnt/onboard/logs/" for Kobo , "/mnt/us/documents/logs/" for Kindle
-        max_text_length_for_analysis = 100000, -- max text length to be used on xray-recap-book analyzes,
-        max_page_size_for_analysis = 250,      -- maximum page size to be used on xray-recap-book analyzes (for page-based documents, ex: PDF)
-
-        -- Term X-Ray context expansion settings (for analyzing characters, objects, places, concepts, magic)
-        -- NOTE: The following settings are optimized to provide ~40k input tokens per term x-ray lookup, using ~10% of a 400k token context window.
-        -- This allows rich analysis of characters, magic systems, plot elements, and relationships in fantasy books.
-        term_xray_context_sentences_before = 5, -- Number of sentences to include BEFORE matching sentences for context (captures descriptions, setup)
-        term_xray_context_sentences_after = 5,  -- Number of sentences to include AFTER matching sentences for context (captures effects, consequences)
-        -- These settings help capture pronouns (he/she/it/that) and narrative context that the LLM needs for complete analysis
-        -- Increase to 3+ for complex magic systems or concepts; decrease to 1 for quick summaries
-        -- Example: For "the Ring", before context captures "The Dark Lord had created..." and after captures "...His mind began to cloud"
-
-        -- LexRank algorithm configuration for intelligent context selection
-        -- LexRank scores sentences based on importance and relevance to identify key content.
-        -- Suggested values: 1000-2000 (process quickly), 2500 (recommended), 5000+ (exhaustive analysis)
-        lexrank_max_sentences = 2500,
-
-        -- What percentage of high-ranking sentences should be selected? Higher = more inclusive.
-        -- 0.70 (70%): Conservative, quality-focused sentences only
-        -- 0.90 (90%): Balanced, includes most important content
-        -- 0.99 (99%): Comprehensive, nearly all ranked content included
-        lexrank_min_selection_percentage = 0.99,
-
-        -- Upper bound on sentence selection. Prevents over-selection in smaller texts.
-        -- 0.85 (85%): Conservative approach, focuses on best matches
-        -- 1.0 (100%): Includes all available context material
-        lexrank_max_selection_percentage = 1.0,
-
-        -- Relevance threshold for sentences containing the searched term. Lower = more inclusive.
-        -- 0.05: Strict filtering, only very relevant term matches
-        -- 0.01: Inclusive, captures weaker term relevance
-        -- 0.005: Exhaustive, includes tangential mentions
-        lexrank_threshold_term_specific = 0.01,
-
-        -- Relevance threshold for general context sentences. Lower = more inclusive.
-        -- 0.05: Strict filtering, high-relevance background context only
-        -- 0.01: Balanced, includes good supporting content
-        -- 0.005: Comprehensive, captures all contextual material
-        lexrank_threshold_general = 0.01,
-
-        -- Fallback threshold when not enough sentences are found. Very permissive.
-        -- 0.02: More selective fallback
-        -- 0.005: Very inclusive fallback
-        lexrank_threshold_very_inclusive = 0.005,
-
-        -- Term-specific context settings
-        -- How many surrounding sentences to include around term mentions?
-        -- 5: Minimal context (focuses on term itself)
-        -- 10: Moderate context (includes narrative details)
-        -- 15+: Extensive context (shows full scene/paragraph)
-        term_filter_context_window = 15,
-
-        -- Hard character limit for total context sent to LLM. Controls token usage.
-        -- 50000 chars (~12k tokens): Quick lookups, lighter processing
-        -- 100000 chars (~25k tokens): Balanced context for rich analysis (recommended)
-        -- 200000 chars (~50k tokens): Comprehensive context, uses more of context window
-        term_xray_max_characters = 100000,
+        render_markdown = true, -- Set to true to render markdown in the AI responses
+        updater_disabled = false, -- Set to true to disable update check.
+        default_folder_for_logs = nil, -- Set the default folder for auto saved logs, nil for the same folder as the book, ex: "/mnt/onboard/logs/" for Kobo , "/mnt/us/documents/logs/" for Kindle
+        max_text_length_for_analysis = 100000, -- max text lenght to be used on xray-recap-book analyzes, 
+        max_page_size_for_analysis =250, --maximum page size to be used on xray-recap-book analyzes (for page-based documents, ex: PDF)
+        wifi_disable_delay = 30, -- seconds to wait before disabling wifi after any AI query (0 = disable immediately, nil = never disable)
 
         -- These are prompts defined in `prompts.lua`, can be overriden here.
         -- each prompt shown as a button in the main dialog.
@@ -329,9 +167,9 @@ local CONFIGURATION = {
 
         },
 
-        book_level_prompts = {
+        book_level_prompts = {    
             -- for an example of a custom book-level prompt, see: https://github.com/omer-faruq/assistant.koplugin/wiki/configuration#5-book-level-custom-prompts
-        },
+        },    
 
         -- AI Recap configuration
         -- If you want to override the default prompts, you can uncomment and modify the following lines:

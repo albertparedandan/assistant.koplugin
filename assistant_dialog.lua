@@ -17,9 +17,7 @@ local koutil = require("util")
 local Device = require("device")
 local Screen = Device.screen
 local CheckButton = require("ui/widget/checkbutton")
-local assistant_utils = require("assistant_utils")
-local extractBookTextForAnalysis = assistant_utils.extractBookTextForAnalysis
-local normalizeMarkdownHeadings = assistant_utils.normalizeMarkdownHeadings
+local extractBookTextForAnalysis = require("assistant_utils").extractBookTextForAnalysis
 local NetworkMgr = require("ui/network/manager")
 
 -- main dialog class
@@ -116,7 +114,6 @@ function AssistantDialog:_createResultText(highlightedText, message_history, pre
       local assistant_content = message.content or _("(No response)")
       -- Remove code block markers before displaying
       assistant_content = assistant_content:gsub("```", "\n")
-      assistant_content = normalizeMarkdownHeadings(assistant_content, 3, 6) or assistant_content
       return string.format("### ⮞ Assistant:\n\n%s\n\n", assistant_content)
     end
     return "" -- Should not happen for valid roles
@@ -226,11 +223,25 @@ function AssistantDialog:_createAndShowViewer(highlightedText, message_history, 
   }
   
   UIManager:show(chatgpt_viewer)
+  require("assistant_utils").scheduleWifiDisable(self.CONFIGURATION)
 end
 
 
 function AssistantDialog:_prepareMessageHistoryForUserQuery(message_history, highlightedText, user_question)
   local book = self:_getBookContext()
+  local progress_warning = ""
+  local success, doc_settings = pcall(function()
+    return require("docsettings"):open(self.assistant.ui.document.file)
+  end)
+  if success and doc_settings then
+    local percent_finished = doc_settings:readSetting("percent_finished") or 0
+    if percent_finished < 1.0 then
+      progress_warning = string.format([[
+
+IMPORTANT: I have only read %.0f%% of this book. Do NOT include any spoilers or events that happen after my current position in your responses.]], percent_finished * 100)
+    end
+  end
+
   local context = {}
   if highlightedText and highlightedText ~= "" then
     context = {
@@ -239,20 +250,14 @@ function AssistantDialog:_prepareMessageHistoryForUserQuery(message_history, hig
       content = string.format([[I'm reading something titled '%s' by %s.
 I have a question about the following highlighted text: ```%s```.
 If the question is not clear enough, analyze the highlighted text.]],
-      book.title, book.author, highlightedText),
-    }
-  elseif book.title and book.author then
-    context = {
-      role = "user",
-      is_context = true,
-      content = string.format([[I'm reading something titled '%s' by %s.
-I have a question about this book.]], book.title, book.author),
+      book.title, book.author, highlightedText) .. progress_warning,
     }
   else
     context = {
       role = "user",
       is_context = true,
-      content = string.format([[You are a helpful assistant. I have a question.]]),
+      content = string.format([[I'm reading something titled '%s' by %s.
+I have a question about this book.]], book.title, book.author) .. progress_warning,
     }
   end
 
@@ -265,19 +270,10 @@ I have a question about this book.]], book.title, book.author),
 end
 
 function AssistantDialog:_getBookContext()
-  local ui = self.assistant and self.assistant.ui
-  if not ui or not ui.document then
-    return { title = nil, author = nil }
-  end
-
-  local ok, props = pcall(function() return ui.document:getProps() end)
-  if not ok or not props then
-    return { title = nil, author = nil }
-  end
-
+  local prop = self.assistant.ui.document:getProps()
   return {
-    title = props.title or "Unknown Title",
-    author = props.authors or "Unknown Author",
+    title = prop.title or "Unknown Title",
+    author = prop.authors or "Unknown Author"
   }
 end
 
@@ -322,7 +318,7 @@ function AssistantDialog:show(highlightedText)
       callback = function()
         local user_question = self.input_dialog and self.input_dialog:getInputText() or ""
         local book_text_prompt = ""
-        if use_book_text_checkbox and use_book_text_checkbox.checked then
+        if use_book_text_checkbox.checked then
           local book_text = extractBookTextForAnalysis(self.CONFIGURATION, self.assistant.ui)
           if book_text then
             book_text_prompt = string.format("\n\n [! IMPORTANT !] Here is the book text up to my current position, only consider this text for your response, and answer in language of previous part of the question:\n [BOOK TEXT BEGIN]\n%s\n[BOOK TEXT END]", book_text)
@@ -379,9 +375,6 @@ function AssistantDialog:show(highlightedText)
         text = tab.text,
         callback = function()
           local user_question = self.input_dialog and self.input_dialog:getInputText() or ""
-          if user_question ~= "" and self.assistant.settings:readSetting("auto_copy_asked_question", true) and Device:hasClipboard() then
-            Device.input.setClipboardText(user_question)
-          end
           self:_close()
           Trapper:wrap(function()
             if tab.order == -10 and tab.idx == "dictionary" then
@@ -445,13 +438,12 @@ function AssistantDialog:show(highlightedText)
 
   -- Show the dialog with the button rows
   local dialog_hint = is_highlighted and 
-      _("Ask a question about the highlighted text") or 
-      book.title and string.format(_("Ask a question about this book:\n%s by %s"), book.title, book.author)
-      or _("Ask a general question")
+    _("Ask a question about the highlighted text") or 
+    string.format(_("Ask a question about this book:\n%s by %s"), book.title, book.author)
+  
   local input_hint = is_highlighted and 
-      _("Type your question here...") or 
-      book.title and _("Ask anything about this book...")
-      or _("Ask anything...")  
+    _("Type your question here...") or 
+    _("Ask anything about this book...")
   
   self.input_dialog = InputDialog:new{
     title = _("AI Assistant"),
@@ -472,18 +464,16 @@ function AssistantDialog:show(highlightedText)
   }
 
   -- Add checkbox below the input field
-  if book.title then
-    use_book_text_checkbox = CheckButton:new{
-      face = Font:getFace("xx_smallinfofont"),
-      text = _("Use book text as context"),
-      parent = self.input_dialog,
-    }
-    local vgroup = self.input_dialog.dialog_frame[1]
-    table.insert(vgroup, 2, HorizontalGroup:new{
-      HorizontalSpan:new{ width = Size.padding.large },
-      use_book_text_checkbox,
-    })
-  end
+  use_book_text_checkbox = CheckButton:new{
+    face = Font:getFace("xx_smallinfofont"),
+    text = _("Use book text as context"),
+    parent = self.input_dialog,
+  }
+  local vgroup = self.input_dialog.dialog_frame[1]
+  table.insert(vgroup, 2, HorizontalGroup:new{
+    HorizontalSpan:new{ width = Size.padding.large },
+    use_book_text_checkbox,
+  })
   
   --  adds a close button to the top right
   self.input_dialog.title_bar.close_callback = function() self:_close() end

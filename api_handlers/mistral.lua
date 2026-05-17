@@ -25,8 +25,7 @@ function MistralHandler:query(message_history, mistral_settings)
     local requestBody = json.encode(requestBodyTable)
     local headers = {
         ["Content-Type"] = "application/json",
-        ["Authorization"] = "Bearer " .. (mistral_settings.api_key),
-        ["Content-Length"] = tostring(#requestBody)
+        ["Authorization"] = "Bearer " .. (mistral_settings.api_key)
     }
 
     if requestBodyTable.stream then

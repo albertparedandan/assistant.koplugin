@@ -570,9 +570,10 @@ function ChatGPTViewer:saveToNotebook()
   
   local page_info = assistant_utils.getPageInfo(self.ui)
 
-  local title_text = (self.title and self.title or self.ui.document and _("Book Analysis") or _("General Conversation")) .. "\n"
+  local title_text = (self.title and self.title or _("Book Analysis")) .. "\n"
   local text_to_log = self.text or ""
-    
+  
+  
   if self.highlighted_text then
     local highlighted_pattern = "^__([^⮞]-)__.-(\n?### ⮞)"
     text_to_log = text_to_log:gsub(highlighted_pattern, "%2", 1)
@@ -713,10 +714,6 @@ function ChatGPTViewer:askAnotherQuestion(simple_mode)
         text = option.text,
         callback = function()
           local dialog = self.input_dialog
-          local user_question = dialog:getInputText()
-          if user_question ~= "" and self.assistant.settings:readSetting("auto_copy_asked_question", true) and Device:hasClipboard() then
-            Device.input.setClipboardText(user_question)
-          end
           UIManager:close(dialog)
           self.input_dialog = nil
           option.callback(dialog)
@@ -749,16 +746,13 @@ function ChatGPTViewer:askAnotherQuestion(simple_mode)
     width = Screen:getWidth() * 0.8,
     height = Screen:getHeight() * 0.4,
     buttons = button_rows,
-  }
-
-  -- add close button (top right cross) to input dialog
-  self.input_dialog.title_bar.close_callback = function()
-    if self.input_dialog then
-      UIManager:close(self.input_dialog)
-      self.input_dialog = nil
+    close_callback = function()
+      if self.input_dialog then
+        UIManager:close(self.input_dialog)
+        self.input_dialog = nil
+      end
     end
-  end
-  self.input_dialog.title_bar:init()
+  }
 
   -- Show the dialog
   UIManager:show(self.input_dialog)
@@ -812,10 +806,8 @@ function ChatGPTViewer:onClose()
   if self.close_callback then self.close_callback() end
 
   -- clear the text selection when plugin is called without a highlight or dict dialog
-  if self.assistant.ui.highlight then
-    if not (self.assistant.ui.highlight.highlight_dialog or self.assistant.ui.dictionary.dict_window) then
-      self.assistant.ui.highlight:clear()
-    end
+  if not (self.assistant.ui.highlight.highlight_dialog or self.assistant.ui.dictionary.dict_window) then
+    self.assistant.ui.highlight:clear()
   end
 
   return true

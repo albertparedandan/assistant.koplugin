@@ -63,18 +63,28 @@ function GeminiHandler:query(message_history, gemini_settings)
         end
     end
 
+    local tools = koutil.tableGetValue(gemini_settings, "additional_parameters", "tools")
+    if type(tools) == "table" and next(tools) ~= nil then
+        requestBodyTable.tools = tools
+    end
+
     local requestBody = json.encode(requestBodyTable)
     
-    local headers = {
-        ["Content-Type"] = "application/json",
-        ["x-goog-api-key"] = gemini_settings.api_key,
-    }
-
     local model = gemini_settings.model or "gemini-2.0-flash"
     local base_url = gemini_settings.base_url or "https://generativelanguage.googleapis.com/v1beta/models/"
-    
-    local url = string.format(stream and "%s%s:streamGenerateContent?alt=sse" or "%s%s:generateContent",
-                base_url, model)
+
+    local headers = {
+        ["Content-Type"] = "application/json",
+    }
+    local url
+    if base_url:find("aiplatform.googleapis.com", 1, true) then
+        url = string.format(stream and "%s%s:streamGenerateContent?alt=sse&key=%s" or "%s%s:generateContent?key=%s",
+                    base_url, model, gemini_settings.api_key)
+    else
+        headers["x-goog-api-key"] = gemini_settings.api_key
+        url = string.format(stream and "%s%s:streamGenerateContent?alt=sse" or "%s%s:generateContent",
+                    base_url, model)
+    end
     logger.dbg("Making Gemini API request to model:", model)
 
     if stream then

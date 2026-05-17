@@ -5,7 +5,7 @@
 
 A powerful plugin that lets you interact with AI language models (Claude, GPT-4, Gemini, DeepSeek, Ollama etc.) while reading. Ask questions about text, get translations, summaries, explanations and more - all without leaving your book.
 
-<small>Originally forked from a deleted fork of AskGPT by zeeyado, then modified using WindSurf. That fork is now public and includes many updates: https://github.com/zeeyado/koassistant.koplugin </small>
+<small>Originally forked from a deleted fork by [zeeyado](https://github.com/zeeyado) of [AskGPT](https://github.com/drewbaumann/askgpt), then modified using WindSurf.</small>
 
 ## Features
 
@@ -54,19 +54,6 @@ Create/modify `configuration.lua` as needed.
 2. Edit the `configuration.lua` file as needed.
     - Set your API keys in `provider_settings`.
     - For more advanced configuration, see the Wiki Configuration.lua.
-
-#### Using OpenAI-Compatible APIs
-
-The plugin supports any OpenAI-compatible API through a flexible naming pattern. Configuration keys follow the format `{handler}_{description}`, where:
-- **handler**: The API handler to use (e.g., `openai`, `anthropic`, `gemini`)
-- **description**: Any descriptive name for your configuration (e.g., `perplexity`, `grok`, `local`)
-
-**Examples:**
-- `openai_perplexity` → uses the `openai` handler for Perplexity API
-- `openai_grok` → uses the `openai` handler for Grok API
-- `anthropic_websearch` → uses the `anthropic` handler with web search enabled
-
-You can create multiple configurations using the same handler with different settings. The part before the first underscore determines which handler is used.
 
 Here's the minimum working example:
 
