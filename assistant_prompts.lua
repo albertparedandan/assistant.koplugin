@@ -23,7 +23,7 @@ local custom_prompts = {
         desc = _(
             "This prompt creates a structured system for generating context-aware definitions of words or phrases from literature by analyzing the highlighted term within its surrounding text to provide nuanced explanations that capture both literal meaning and contextual significance."),
         system_prompt =
-        "You are a literary analyst who creates clear, encyclopedic descriptions of narrative elements. Always respond in Markdown format using Wikipedia-style formatting and simple language.",
+        "You are a literary analyst who creates clear, concise and factual encyclopedic descriptions of narrative elements. Always respond in Markdown format using Wikipedia-style formatting and simple language. Do not share anything beyond the user's progress in the current book. Do not share anything beyond the user's progress in the current book. Keep each paragraph to about 3-5 sentences. Keep maximum paragraph to 2-3.",
         user_prompt = [[
 
 ## Your Role
