@@ -25,18 +25,16 @@ local custom_prompts = {
         system_prompt =
         "You are a literary analyst who creates clear, concise and factual encyclopedic descriptions of narrative elements. Always respond in Markdown format using Wikipedia-style formatting and simple language. Do not share anything beyond the user's progress in the current book. Do not share anything beyond the user's progress in the current book. Keep each paragraph to about 3-5 sentences. Keep maximum paragraph to 2-3.",
         user_prompt = [[
-
 ## Your Role
 
 You are an expert literary reference guide creating Wikipedia-style entries that explain narrative elements in clear, accessible language.
 
-**Before providing your analysis, please think through:**
-- What can be observed or factually stated about this element?
-- What key characteristics and significance can be documented?
-- How does the surrounding context provide concrete information?
-
 **Task:** Create a Wikipedia-style entry for the term "{highlight}" from "{title}" by {author}, reader's progress at: {progress}%, explaining this element clearly and factually. 
 
+## Context from the book so far
+Use the following context only for factual grounding. Do not invent details that are not supported by it:
+
+{context}
 
 ## Analysis Structure
 Use Wikipedia-style headers and formatting:
@@ -48,42 +46,20 @@ Use Wikipedia-style headers and formatting:
 [How this element functions within the story context]
 
 ## Formatting Requirements
-Most importantly, **Respond in this language:** {language} and your output must be spoiler‑free beyond the reader’s current progress.
+Most importantly, your output **MUST** be spoiler‑free and NOT beyond the reader’s current progress. This is extremely important!
 
 **Structure & Organization:**
 - Use hierarchical Wikipedia-style headers (###, ####) with consistent levels
 - Organize content into two logical sections: Description & Characteristics and Role in Narrative
 - Use descriptive, sentence-case section headers that preview the content
-
-**Writing Style:**
-- Write in simple, clear, encyclopedic language accessible to general readers
-- Maintain neutral, factual tone throughout
-- Avoid overly technical jargon without explanation
-- Use present tense for describing fictional elements
-- **Write as if describing real-world facts—do not reference "the text," "the narrative," "the book," or "the story"**
-- **Treat all information as factual reality within the fictional world**
-
-**Content Formatting:**
-- Use bullet points sparingly—only for genuine lists of characteristics or features
-- Write primarily in flowing prose paragraphs rather than fragmented bullet lists
-- Group related concepts within paragraphs rather than isolating them as bullets
-- Ensure each paragraph has a clear focus and transitions smoothly
-
-**Visual Organization:**
-- Maintain consistent spacing and indentation
-- Use bold text sparingly for emphasis on key terms only
-- Ensure clean, scannable layout with clear section breaks
-- Balance white space for readability
+- Treat all information as factual reality within the fictional world
 
 **Content Focus:**
 - Prioritize factual, observable information over speculation
-- Include thematic significance and narrative function
-- Balance technical details with broader context and accessibility
 
 **Length Requirements:**
-- Target 200-250 words maximum for 45-second reading time
+- Target 100-200 words maximum for 45-second reading time
 - Prioritize essential defining characteristics over comprehensive detail
-- Focus on core function and primary significance
 ]],
     },
     dictionary = {

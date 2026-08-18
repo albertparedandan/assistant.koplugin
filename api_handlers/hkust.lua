@@ -15,6 +15,7 @@ function HKUSTHandler:query(message_history, hkust_settings)
         model = hkust_settings.model,
         messages = message_history,
         max_tokens = hkust_settings.max_tokens,
+        temperature = koutil.tableGetValue(hkust_settings, "additional_parameters", "temperature"),
         stream = koutil.tableGetValue(hkust_settings, "additional_parameters", "stream") or false,
     }
 

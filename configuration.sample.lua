@@ -149,6 +149,14 @@ local CONFIGURATION = {
         max_page_size_for_analysis =250, --maximum page size to be used on xray-recap-book analyzes (for page-based documents, ex: PDF)
         wifi_disable_delay = 30, -- seconds to wait before disabling wifi after any AI query (0 = disable immediately, nil = never disable)
 
+        -- Term X-Ray context extraction (LexRank) tuning.
+        -- Controls how much book context is gathered when {context} is used in the term_xray prompt.
+        -- term_xray_context = {
+        --     max_sentences = 60,      -- max context sentences sent to the API (default: 60)
+        --     context_window = 2,      -- sentences of context around each term mention (default: 2)
+        --     lexrank_threshold = 0.1, -- similarity threshold, higher = more selective (default: 0.1)
+        -- },
+
         -- These are prompts defined in `prompts.lua`, can be overriden here.
         -- each prompt shown as a button in the main dialog.
         -- The `order` determines the position in the main popup.

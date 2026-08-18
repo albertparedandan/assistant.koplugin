@@ -12,7 +12,7 @@ local NetworkMgr = require("ui/network/manager")
 local dict_prompts = require("assistant_prompts").assistant_prompts.dict
 
 -- Filter text to find sentences containing the highlighted term with surrounding context
-local function filterTextForTerm(text, highlighted_term, language_code)
+local function filterTextForTerm(text, highlighted_term, language_code, context_window)
     if not text or not highlighted_term or highlighted_term == "" then
         return nil
     end
@@ -70,7 +70,7 @@ local function filterTextForTerm(text, highlighted_term, language_code)
     end
 
     -- Include larger context sentences around matches for better coverage
-    local context_window = 5 -- sentences before and after (increased from 2)
+    context_window = context_window or 5 -- sentences before and after
     local selected_indices = {}
 
     for _, idx in ipairs(matching_indices) do
@@ -171,55 +171,44 @@ local function showDictionaryDialog(assistant, highlightedText, message_history,
         local assistant_utils = require("assistant_utils")
         local LexRank = require("assistant_lexrank")
 
+        -- Configurable context extraction, see `term_xray_context` in configuration.lua
+        local ctx_conf = koutil.tableGetValue(CONFIGURATION, "features", "term_xray_context") or {}
+        local max_sentences = ctx_conf.max_sentences or 60
+        local context_window = ctx_conf.context_window or 2
+        local threshold = ctx_conf.lexrank_threshold or 0.1
+
         -- Get book text up to current reading position
         local book_text = assistant_utils.extractBookTextForAnalysis(CONFIGURATION, ui)
 
         if book_text and #book_text > 100 then
-            -- Two-stage ranking approach for comprehensive context
             local context_sentences = {}
+            local seen_sentences = {}
 
             -- Stage 1: Search for sentences containing the highlighted term
-            local filtered_text = filterTextForTerm(book_text, highlightedText, dict_language)
+            local filtered_text = filterTextForTerm(book_text, highlightedText, dict_language, context_window)
 
             if filtered_text and #filtered_text > 100 then
                 -- Get relevant sentences using LexRank on term-specific text
-                local term_ranked_sentences = LexRank.rank_sentences(filtered_text, 0.05, 0.1, dict_language) -- Lower threshold
+                local term_ranked_sentences = LexRank.rank_sentences(filtered_text, threshold, 0.1, dict_language)
 
-                -- Add these high-relevance sentences
+                -- Term-focused sentences get most of the budget (70%)
+                local term_target = math.floor(max_sentences * 0.7)
                 for _, sentence in ipairs(term_ranked_sentences) do
-                    table.insert(context_sentences, sentence)
-                end
-            end
-
-            -- Stage 2: Get additional general context from the full book text
-            -- Use more aggressive parameters to get more sentences
-            local general_ranked_sentences = LexRank.rank_sentences(book_text, 0.05, 0.1, dict_language) -- Lower threshold
-
-            -- Add general context sentences, avoiding duplicates
-            local seen_sentences = {}
-            for _, sentence in ipairs(context_sentences) do
-                seen_sentences[sentence] = true
-            end
-
-            local additional_count = 0
-            local max_additional = math.floor(#context_sentences * 1.5) -- Add up to 150% more context
-
-            for _, sentence in ipairs(general_ranked_sentences) do
-                if not seen_sentences[sentence] and additional_count < max_additional then
-                    table.insert(context_sentences, sentence)
-                    additional_count = additional_count + 1
-                end
-            end
-
-            -- If we still don't have enough context, lower the bar even more
-            if #context_sentences < 150 then -- Target at least 150 sentences for rich context
-                local very_inclusive_sentences = LexRank.rank_sentences(book_text, 0.02, 0.1, dict_language) -- Very low threshold
-
-                for _, sentence in ipairs(very_inclusive_sentences) do
-                    if not seen_sentences[sentence] and #context_sentences < 200 then -- Cap at 200 sentences
+                    if #context_sentences < term_target then
                         table.insert(context_sentences, sentence)
                         seen_sentences[sentence] = true
                     end
+                end
+            end
+
+            -- Stage 2: Fill the remaining budget with general context from the full book
+            local general_ranked_sentences = LexRank.rank_sentences(book_text, threshold, 0.1, dict_language)
+
+            for _, sentence in ipairs(general_ranked_sentences) do
+                if #context_sentences >= max_sentences then break end
+                if not seen_sentences[sentence] then
+                    table.insert(context_sentences, sentence)
+                    seen_sentences[sentence] = true
                 end
             end
 
